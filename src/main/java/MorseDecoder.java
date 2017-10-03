@@ -54,7 +54,12 @@ public class MorseDecoder {
         double[] sampleBuffer = new double[BIN_SIZE * inputFile.getNumChannels()];
         for (int binIndex = 0; binIndex < totalBinCount; binIndex++) {
             // Get the right number of samples from the inputFile
+            inputFile.readFrames(sampleBuffer, BIN_SIZE * inputFile.getNumChannels());
             // Sum all the samples together and store them in the returnBuffer
+            returnBuffer[binIndex] = 0;
+            for (int i = 0; i < sampleBuffer.length; i++) {
+                returnBuffer[binIndex] += Math.abs(sampleBuffer[i]);
+            }
         }
         return returnBuffer;
     }
@@ -77,6 +82,7 @@ public class MorseDecoder {
      * @return the Morse code string of dots, dashes, and spaces
      */
     private static String powerToDotDash(final double[] powerMeasurements) {
+        String retString = "";
         /*
          * There are four conditions to handle. Symbols should only be output when you see
          * transitions. You will also have to store how much power or silence you have seen.
@@ -87,7 +93,32 @@ public class MorseDecoder {
         // else if issilence and wassilence
         // else if issilence and not wassilence
 
-        return "";
+        int runCount = 0;
+        for (int i = 1; i < powerMeasurements.length; i++) {
+            if (powerMeasurements[i] > POWER_THRESHOLD
+                    && powerMeasurements[i - 1] > POWER_THRESHOLD) {
+                runCount++;
+            } else if (powerMeasurements[i] > POWER_THRESHOLD
+                    && powerMeasurements[i - 1] < POWER_THRESHOLD) {
+                if (runCount > DASH_BIN_COUNT) {
+                    retString += " ";
+                }
+                runCount = 0;
+            } else if (powerMeasurements[i] < POWER_THRESHOLD
+                    && powerMeasurements[i - 1] < POWER_THRESHOLD) {
+                runCount++;
+            } else if (powerMeasurements[i] < POWER_THRESHOLD
+                    && powerMeasurements[i - 1] > POWER_THRESHOLD) {
+                if (runCount > DASH_BIN_COUNT) {
+                    retString += "-";
+                } else {
+                    retString += ".";
+                }
+                runCount = 0;
+            }
+        }
+
+        return retString;
     }
 
     /**
